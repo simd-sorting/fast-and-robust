@@ -946,7 +946,7 @@ inline __m256i rnd_epu32(__m256i rnd_vec, __m256i bound) {
 
 /* average of two integers without overflow
  * http://aggregate.org/MAGIC/#Average%20of%20Integers */
-inline int average(int a, int b) { return (a & b) + ((a ^ b) / 2); }
+inline int average(int a, int b) { return (a & b) + ((a ^ b) >> 1); }
 
 inline int get_pivot(int *arr, const int left, const int right){
   auto bound = _mm256_set1_epi32(right - left + 1);
