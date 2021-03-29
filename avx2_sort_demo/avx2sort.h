@@ -118,7 +118,8 @@ inline void sort_16(__m256i &v1, __m256i &v2) {
   COEX_SHUFFLE(vec, 2, 3, 0, 1, 6, 7, 4, 5, ASC);                           \
   COEX_SHUFFLE(vec, 0, 2, 1, 3, 4, 6, 5, 7, ASC);                           \
   COEX_PERMUTE(vec, 7, 6, 5, 4, 3, 2, 1, 0, ASC);                           \
-  COEX_SHUFFLE(vec, 2, 3, 0, 1, 6, 7, 4, 5, ASC);}
+  COEX_SHUFFLE(vec, 2, 3, 0, 1, 6, 7, 4, 5, ASC);                           \
+  COEX_SHUFFLE(vec, 1, 0, 3, 2, 5, 4, 7, 6, ASC);}
 
 /* merge N vectors with bitonic merge, N % 2 == 0 and N > 0
  * s = 2 means that two vectors are already sorted */
