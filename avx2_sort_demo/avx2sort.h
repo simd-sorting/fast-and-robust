@@ -4,8 +4,7 @@
 #include <immintrin.h>
 #include <cstdint>
 #include <algorithm>
-//#include <vector>
-#include <math/v8int.h>
+
 /* this header contains two vectorized functions for the data type int:
  * 1. avx2::quickselect(int *arr, int n, int k)
  * 2. avx2::quicksort(int *arr, int n)
@@ -699,21 +698,18 @@ inline int partition_vec(__m256i &curr_vec, const __m256i &pivot_vec,
   return amount_gt_pivot; }
 
 inline int calc_min(__m256i vec) { /* minimum of 8 int */
-    return math::horizontal_min(math::v8int{ vec });
-}
-  //auto perm_mask = _mm256_setr_epi32(7, 6, 5, 4, 3, 2, 1, 0);
-  //vec = _mm256_min_epi32(vec, _mm256_permutevar8x32_epi32(vec, perm_mask));
-  //vec = _mm256_min_epi32(vec, _mm256_shuffle_epi32(vec, 0b10110001));
-  //vec = _mm256_min_epi32(vec, _mm256_shuffle_epi32(vec, 0b01001110));
-  //return _mm256_extract_epi32(vec, 0); }
+  auto perm_mask = _mm256_setr_epi32(7, 6, 5, 4, 3, 2, 1, 0);
+  vec = _mm256_min_epi32(vec, _mm256_permutevar8x32_epi32(vec, perm_mask));
+  vec = _mm256_min_epi32(vec, _mm256_shuffle_epi32(vec, 0b10110001));
+  vec = _mm256_min_epi32(vec, _mm256_shuffle_epi32(vec, 0b01001110));
+  return _mm256_extract_epi32(vec, 0); }
 
 inline int calc_max(__m256i vec){ /* maximum of 8 int */
-    return math::horizontal_max(math::v8int{ vec });
-  //auto perm_mask = _mm256_setr_epi32(7, 6, 5, 4, 3, 2, 1, 0);
-  //vec = _mm256_max_epi32(vec, _mm256_permutevar8x32_epi32(vec, perm_mask));
-  //vec = _mm256_max_epi32(vec, _mm256_shuffle_epi32(vec, 0b10110001));
-  //vec = _mm256_max_epi32(vec, _mm256_shuffle_epi32(vec, 0b01001110));
-  //return _mm256_extract_epi32(vec, 0); 
+  auto perm_mask = _mm256_setr_epi32(7, 6, 5, 4, 3, 2, 1, 0);
+  vec = _mm256_max_epi32(vec, _mm256_permutevar8x32_epi32(vec, perm_mask));
+  vec = _mm256_max_epi32(vec, _mm256_shuffle_epi32(vec, 0b10110001));
+  vec = _mm256_max_epi32(vec, _mm256_shuffle_epi32(vec, 0b01001110));
+  return _mm256_extract_epi32(vec, 0); 
 }
 
 inline int partition_vectorized_8(int *arr, int left, int right,
