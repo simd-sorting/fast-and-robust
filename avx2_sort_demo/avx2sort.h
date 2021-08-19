@@ -4,8 +4,8 @@
 #include <immintrin.h>
 #include <cstdint>
 #include <algorithm>
-#include <vector>
-
+//#include <vector>
+#include <math/v8int.h>
 /* this header contains two vectorized functions for the data type int:
  * 1. avx2::quickselect(int *arr, int n, int k)
  * 2. avx2::quicksort(int *arr, int n)
@@ -30,8 +30,8 @@ namespace _internal {
 /* shuffle 2 vectors, instruction for int is missing,
  * therefore shuffle with float */
 #define SHUFFLE_2_VECS(a, b, mask)                                       \
-    reinterpret_cast<__m256i>(_mm256_shuffle_ps(                         \
-        reinterpret_cast<__m256>(a), reinterpret_cast<__m256>(b), mask));
+    _mm256_castps_si256 (_mm256_shuffle_ps(                         \
+        _mm256_castsi256_ps (a), _mm256_castsi256_ps (b), mask));
 
 /* optimized sorting network for two vectors, that is 16 ints */
 inline void sort_16(__m256i &v1, __m256i &v2) {
@@ -421,7 +421,7 @@ inline void sort_int_sorting_network(int *arr, int *buff, int n) {
 /*** vectorized quicksort
 **************************************/
 
-/* auto generated permutations masks for quicksort */
+/* auto generated permutations masks for quicksort(8 KB..) */
 const __m256i permutation_masks[256] = {_mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7),
                                         _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0),
                                         _mm256_setr_epi32(0, 2, 3, 4, 5, 6, 7, 1),
@@ -689,7 +689,7 @@ inline int partition_vec(__m256i &curr_vec, const __m256i &pivot_vec,
   smallest_vec = _mm256_min_epi32(curr_vec, smallest_vec);
   biggest_vec = _mm256_max_epi32(curr_vec, biggest_vec);
   /* extract the most significant bit from each integer of the vector */
-  int mm = _mm256_movemask_ps(reinterpret_cast<__m256>(compared));
+  int mm = _mm256_movemask_ps(_mm256_castsi256_ps(compared));
   /* how many ones, each 1 stands for an element greater than pivot */
   int amount_gt_pivot = _mm_popcnt_u32((mm));
   /* permute elements larger than pivot to the right, and,
@@ -698,19 +698,23 @@ inline int partition_vec(__m256i &curr_vec, const __m256i &pivot_vec,
   /* return how many elements are greater than pivot */
   return amount_gt_pivot; }
 
-inline int calc_min(__m256i vec){ /* minimum of 8 int */
-  auto perm_mask = _mm256_setr_epi32(7, 6, 5, 4, 3, 2, 1, 0);
-  vec = _mm256_min_epi32(vec, _mm256_permutevar8x32_epi32(vec, perm_mask));
-  vec = _mm256_min_epi32(vec, _mm256_shuffle_epi32(vec, 0b10110001));
-  vec = _mm256_min_epi32(vec, _mm256_shuffle_epi32(vec, 0b01001110));
-  return _mm256_extract_epi32(vec, 0); }
+inline int calc_min(__m256i vec) { /* minimum of 8 int */
+    return math::horizontal_min(math::v8int{ vec });
+}
+  //auto perm_mask = _mm256_setr_epi32(7, 6, 5, 4, 3, 2, 1, 0);
+  //vec = _mm256_min_epi32(vec, _mm256_permutevar8x32_epi32(vec, perm_mask));
+  //vec = _mm256_min_epi32(vec, _mm256_shuffle_epi32(vec, 0b10110001));
+  //vec = _mm256_min_epi32(vec, _mm256_shuffle_epi32(vec, 0b01001110));
+  //return _mm256_extract_epi32(vec, 0); }
 
 inline int calc_max(__m256i vec){ /* maximum of 8 int */
-  auto perm_mask = _mm256_setr_epi32(7, 6, 5, 4, 3, 2, 1, 0);
-  vec = _mm256_max_epi32(vec, _mm256_permutevar8x32_epi32(vec, perm_mask));
-  vec = _mm256_max_epi32(vec, _mm256_shuffle_epi32(vec, 0b10110001));
-  vec = _mm256_max_epi32(vec, _mm256_shuffle_epi32(vec, 0b01001110));
-  return _mm256_extract_epi32(vec, 0); }
+    return math::horizontal_max(math::v8int{ vec });
+  //auto perm_mask = _mm256_setr_epi32(7, 6, 5, 4, 3, 2, 1, 0);
+  //vec = _mm256_max_epi32(vec, _mm256_permutevar8x32_epi32(vec, perm_mask));
+  //vec = _mm256_max_epi32(vec, _mm256_shuffle_epi32(vec, 0b10110001));
+  //vec = _mm256_max_epi32(vec, _mm256_shuffle_epi32(vec, 0b01001110));
+  //return _mm256_extract_epi32(vec, 0); 
+}
 
 inline int partition_vectorized_8(int *arr, int left, int right,
                                   int pivot, int &smallest, int &biggest) {
@@ -791,7 +795,7 @@ inline int partition_vectorized_64(int *arr, int left, int right,
     __m256i vec_L = LOAD_VECTOR(arr + left);
     __m256i compared = _mm256_cmpgt_epi32(vec_L, pivot_vec);
     sv = _mm256_min_epi32(vec_L, sv); bv = _mm256_max_epi32(vec_L, bv);
-    int mm = _mm256_movemask_ps(reinterpret_cast<__m256>(compared));
+    int mm = _mm256_movemask_ps(_mm256_castsi256_ps(compared));
     int amount_gt_pivot = _mm_popcnt_u32((mm));
     __m256i permuted = _mm256_permutevar8x32_epi32(vec_L, permutation_masks[mm]);
 
@@ -864,7 +868,8 @@ inline int partition_vectorized_64(int *arr, int left, int right,
     STORE_VECTOR(arr + r_store + 56, curr_vec5); r_store -= amount_gt_pivot5;
     STORE_VECTOR(arr + r_store + 56, curr_vec6); r_store -= amount_gt_pivot6;
     STORE_VECTOR(arr + r_store + 56, curr_vec7); r_store -= amount_gt_pivot7;
-    STORE_VECTOR(arr + r_store + 56, curr_vec8); r_store -= amount_gt_pivot8; }
+    STORE_VECTOR(arr + r_store + 56, curr_vec8); r_store -= amount_gt_pivot8;
+  }
 
   /* partition and store 8 vectors coming from the left side of the array */
   int amount_gt_pivot = partition_vec(vec_left, pivot_vec, sv, bv);
@@ -986,6 +991,7 @@ inline int get_pivot(int *arr, const int left, const int right){
                  _mm256_extract_epi32(v[4], 4)); }
 
 /* recursion for quicksort */
+
 inline void qs_core(int *arr, int left, int right,
                     bool choose_avg = false, const int avg = 0) {
   if (right - left < 513) { /* use sorting networks for small arrays */
